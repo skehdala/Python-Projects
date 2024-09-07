@@ -176,4 +176,29 @@ I delete unwanted columns:
 - Type - Information was extracted.
 - Take Profit - Information was extracted and is not relevant to this analysis.
 - Stop Loss - Information was extracted and is not relevant to this analysis.
+```python
+unwanted = ['Ticket', 
+            'Commission',             
+            'Comment', 
+            'Type', 
+            'Take Profit', 
+            'Stop Loss']
 
+df.drop(unwanted, axis=1, inplace=True)
+```
+The shape of the original data was:
+```python
+raw.shape
+```
+(92,15)
+
+After cleaning the shape is:
+```python
+df.shape
+```
+(92, 24)
+
+The clean data looks like this:
+```python
+df.head()
+```
