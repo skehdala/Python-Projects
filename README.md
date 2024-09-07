@@ -202,3 +202,87 @@ The clean data looks like this:
 ```python
 df.head()
 ```
+![image](https://github.com/user-attachments/assets/59899d0e-feb1-4ddc-91e8-5084c4a72255)
+
+### The basics
+
+I'm going to start the analysis by computing basic statistics the should interest any algorithmic trader.
+Trading started on:
+```python
+start = df['Open Date'].min()
+str(start)
+```
+'2020-05-19'
+
+The last trade in the data was closed on:
+```python
+stop = df['Close Date'].max()
+str(stop)
+```
+'2020-06-16'
+
+That means the algorithms traded for nearly a month.
+```python
+str(stop - start)
+```
+'28 days, 0:00:00'
+
+Trades over the period in question:
+```python
+df.shape[0]
+```
+92
+
+### Profit
+
+#### Total profit
+
+Over the period in question the algorithms achieved a profit of:
+```python
+np.round(df['Profit'].sum(), 2)
+```
+118.02 
+
+### Total profit by market
+
+As can be seen the bulk of the profit comes from 'USDCHF'.
+```python
+df_symbol = df[['Symbol', 'Profit']].groupby(['Symbol'], as_index=False).sum()
+
+plt.figure(figsize=figsize)
+plt.bar(df_symbol['Symbol'], df_symbol['Profit'])
+plt.xticks(df_symbol['Symbol'], rotation=90)
+plt.ylabel('Profit (zł)')
+plt.xlabel('Symbol')
+plt.show()
+```
+![image](https://github.com/user-attachments/assets/0165fe65-af60-47fa-a9c9-f36230b6f2e2)
+
+### Total profit by market and trade direction
+
+The most money was made by shorting 'USDCHF'. The most money was lost buying 'US500'.
+```python
+df_mkt = df[['Symbol', 'Order Type', 'Direction', 'Profit']]
+df_mkt = df_mkt.groupby(['Symbol', 'Order Type'], as_index=False)
+df_mkt = df_mkt.agg({"Direction": [np.sum], "Profit": [np.sum]})
+df_mkt.columns = df_mkt.columns.droplevel(1)
+df_mkt['Direction'] = np.abs(df_mkt['Direction'])
+df_mkt = df_mkt.rename(columns={"Direction" : "Number of trades"})
+df_mkt.sort_values('Profit', ascending=False)
+```
+![image](https://github.com/user-attachments/assets/c6bcbe51-9e3a-4bcc-9ed7-9c257d0b078c)
+
+### Best day
+The 3 best days were:
+```python
+df_cdate = df[['Close Date', 'Profit']].groupby(['Close Date'], as_index=False).sum()
+df_cdate.sort_values('Profit', ascending=False).head(3)
+```
+![image](https://github.com/user-attachments/assets/3eeaf65c-5f79-4e02-b9fe-4a8e2a7ad9f9)
+
+### Worst days
+The worst 3 days were:
+```python
+df_cdate.sort_values('Profit', ascending=True).head(3)
+```
+
