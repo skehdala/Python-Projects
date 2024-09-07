@@ -272,7 +272,7 @@ df_mkt.sort_values('Profit', ascending=False)
 ```
 ![image](https://github.com/user-attachments/assets/c6bcbe51-9e3a-4bcc-9ed7-9c257d0b078c)
 
-### Best day
+### Best days
 The 3 best days were:
 ```python
 df_cdate = df[['Close Date', 'Profit']].groupby(['Close Date'], as_index=False).sum()
@@ -285,4 +285,35 @@ The worst 3 days were:
 ```python
 df_cdate.sort_values('Profit', ascending=True).head(3)
 ```
+![image](https://github.com/user-attachments/assets/a882b96e-4404-4580-bf5c-14121bd65b56)
 
+### Costs
+Amount of swap paid:
+```python
+np.sum(df['Swap'])
+```
+-7.6
+
+### Profit Per Lot
+Since the trades vary in lot size it makes more sense to look at 'Profit Per Lot' than at 'Profit'.
+
+### Profit Per Lot histogram
+As can be seen the distribution of 'Profit Per Lot' is nothing like a normal distribution:
+```python
+width = 400
+height = 400
+dpi = 100
+
+plt.figure(figsize=(width/dpi, height/dpi))
+plt.hist(df['Profit Per Lot'])
+plt.ylabel('Frequency')
+plt.xlabel('Profit Per Lot (zł)')
+plt.title('Profit Per Lot histogram', fontsize=18)
+plt.tight_layout()
+plt.savefig('./img/profit_histogram.png')
+plt.show()
+```
+
+![image](https://github.com/user-attachments/assets/a9b666a5-ab9d-4359-82cb-388f33636f7f)
+
+https://github.com/shsarv/Data-Analytics-Projects-in-python/blob/main/trading-results/Trading%20Results%20Analysis.ipynb
