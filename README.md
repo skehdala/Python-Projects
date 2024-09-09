@@ -317,3 +317,306 @@ plt.show()
 ![image](https://github.com/user-attachments/assets/a9b666a5-ab9d-4359-82cb-388f33636f7f)
 
 https://github.com/shsarv/Data-Analytics-Projects-in-python/blob/main/trading-results/Trading%20Results%20Analysis.ipynb
+
+The mean of the distribution is:
+```python
+np.round(np.mean(df['Profit Per Lot']), 2)
+```
+0.49
+
+However the median is negative so the most frequent trades were small losses:
+```python
+np.round(np.quantile(df['Profit Per Lot'], 0.5), 2)
+```
+-7.5
+
+Standard deviation is
+```python
+np.round(np.std(df['Profit Per Lot']), 2)
+```
+22.85
+
+Interquartile range:
+```python
+np.round(np.quantile(df['Profit Per Lot'], 0.75) - np.quantile(df['Profit Per Lot'], 0.25))
+```
+14.0
+
+The distribution exhibits positive skew of:
+```python
+np.round(skew(df['Profit Per Lot']), 2)
+```
+3.06
+
+The distribution is also leptokurtic:
+```python
+np.round(kurtosis(df['Profit Per Lot']), 2)
+```
+15.45
+
+### Comment
+
+This is to be expected given the design of the algorithms. They have a predifined maximum loss per trade (they will take small losses more frequently) but can hold winning trades for up to a week (hence the big wins).
+
+### Profit Per Lot by symbol
+
+Given the presence of outliers I think it is apropriate that for the rest of this section I analyze the median of 'Profit Per Lot'.
+As can be seen by far the worst market was 'US500'.
+```python
+df_ppl = df[['Symbol', 'Profit Per Lot']].groupby(['Symbol'], as_index=False).quantile(0.5)
+df_ppl['Symbol'] = df_ppl['Symbol'].astype('str')
+
+plt.figure(figsize=figsize)
+plt.bar(df_ppl['Symbol'], df_ppl['Profit Per Lot'])
+plt.xticks(df_ppl['Symbol'], rotation=90)
+plt.ylabel('Median Profit Per Lot (zł)')
+plt.xlabel('Symbol')
+plt.show()
+```
+![image](https://github.com/user-attachments/assets/3a80fabb-7773-4c11-a230-f6eca822ecb7)
+
+### Profit Per Lot by day of week
+
+As can be seen no particular day of the week is better for trading.
+```python
+df_day = df[['Open Day', 'Profit Per Lot']].groupby(['Open Day'], as_index=False).quantile(0.5)
+df_day.rename(columns={"Open Day": "Day Of Week"}, inplace=True)
+
+plt.figure(figsize=figsize)
+plt.bar(df_day['Day Of Week'], df_day['Profit Per Lot'])
+plt.xticks(df_day['Day Of Week'], rotation=90)
+plt.ylabel('Median Profit Per Lot (zł)')
+plt.xlabel('Day Of Week')
+plt.show()
+```
+![image](https://github.com/user-attachments/assets/49163b4d-8742-4282-b8f7-db48a382605b)
+
+### Profit Per Lot by open hour
+The median profit per lot is positive for 2pm and 4pm. This is very interesting because:
+
+- Around 2pm typically macroeconomic news is released.
+- The european session closes at 5pm.
+```python
+df_hour = df[['Open Hour', 'Profit Per Lot']].groupby(['Open Hour'], as_index=False).quantile(0.5)
+df_hour.rename(columns={"Open Hour": "Hour Of Day"}, inplace=True)
+
+plt.figure(figsize=figsize)
+plt.bar(df_hour['Hour Of Day'], df_hour['Profit Per Lot'])
+plt.ylabel('Median Profit Per Lot (zł)')
+plt.xlabel('Hour Of Day')
+
+ax = plt.gca()
+ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))        
+
+plt.show()
+```
+![image](https://github.com/user-attachments/assets/d0921bca-6c64-4c7c-b764-f16796e304ee)
+
+### Trades
+#### Best trades
+
+Here is a table with the 3 best trades.
+```python
+df[['Symbol', 'Profit Per Lot', 'Profit']].sort_values('Profit Per Lot', ascending=False).head(3)
+```
+![image](https://github.com/user-attachments/assets/013b8482-6b1f-4101-bec0-52df6703824c)
+
+### Worst trades
+
+Here is a table with the 3 worst trades.
+```python
+df[['Symbol', 'Profit Per Lot', 'Profit']].sort_values('Profit Per Lot', ascending=True).head(3)
+```
+![image](https://github.com/user-attachments/assets/0a7a41e7-5f1c-4420-908a-80aa3cd374f7)
+
+### Average win
+
+A profitable trade on average nets:
+```python
+avg_profit = np.round(df[df['Profit Per Lot'] >= 0]['Profit Per Lot'].mean(), 2)
+avg_profit
+```
+17.34
+
+### Average loss
+A unprofitable trade on average loses:
+
+```python
+avg_loss = np.round(df[df['Profit Per Lot'] < 0]['Profit Per Lot'].mean(), 2)
+avg_loss
+```
+-10.84
+
+### Profit / loss ratio
+```python
+np.round(np.abs(avg_profit / avg_loss), 2)
+```
+1.6
+
+### Percent of winning trades
+
+As can be seen winning trades occur 40% of the time.
+```python
+win_prob = np.round(df[df['Profit Per Lot'] >= 0]['Profit Per Lot'].count() / df.shape[0] * 100, 2)
+win_prob
+```
+40.22
+
+### Percent of losing trades
+
+Losing trades occur 60% of the time.
+```python
+loss_prob = np.round(df[df['Profit Per Lot'] < 0]['Profit Per Lot'].count() / df.shape[0] * 100, 2)
+loss_prob
+```
+59.78
+
+### Probability of observing consecutive losses
+
+I use the well known formula to compute the probability of a series of 10 losses happening. This calculation should be taken with a grain of salt because the probabilities are most surely not fixed.
+```python
+X = geom(loss_prob / 100)
+df_geom = pd.DataFrame([np.arange(1,11), np.round(np.power(loss_prob/100, np.arange(1,11)),2)]).T
+df_geom.columns = ['Losses', 'Probability']
+df_geom['Losses'] = df_geom['Losses'].astype('int')
+df_geom
+```
+![image](https://github.com/user-attachments/assets/b5b7e791-401b-4ab6-95c8-75a3796550a4)
+
+### Trade duration
+
+Next I inspect the histogram of the duration of individual trades.
+
+```python
+plt.figure(figsize=figsize)
+plt.hist(df['Duration'])
+plt.ylabel('Frequency')
+plt.xlabel('Time (min)')
+plt.show()
+```
+![image](https://github.com/user-attachments/assets/1a66a872-79e4-4c15-81fe-49bab4196eb3)
+
+I wonder what distribution does this follow ?
+
+I create a random discrete random variable from binned data, and fit both a exponential and power law distribution.
+```python
+dur = df['Duration'].to_numpy()
+
+h = np.histogram(dur, bins=1000)
+D_emp = rv_histogram(h)
+
+a, loc, scale = powerlaw.fit(dur)
+D_power = powerlaw(a=a, loc=loc, scale=scale)
+
+loc, scale = expon.fit(dur)
+D_exp = expon(loc=loc, scale=scale)
+
+X = np.linspace(np.min(dur), np.max(dur), 1000)
+```
+Unfortunately, as can bee seen the cdf's do not match, but they could serve as a approximation if need be.
+```python
+plt.figure(figsize=figsize)
+plt.plot(X, D_power.cdf(X), label="Power")
+plt.plot(X, D_exp.cdf(X), label="Exponential")
+plt.plot(X, D_emp.cdf(X), label="Empirical")         
+plt.legend(loc='best')
+plt.show()
+```
+![image](https://github.com/user-attachments/assets/3ec6ac11-8fde-446a-9061-bc8530bd06a2)
+
+```python
+df_dur = df['Duration'].to_frame()
+df_dur['Duration'] = df_dur['Duration'].apply(lambda x: timedelta(minutes=x))
+```
+### Longest trades
+
+The longest trade took almost 4 days.
+```python
+df_dur = df_dur.sort_values('Duration', ascending=False)
+df_dur.head(3)
+```
+![image](https://github.com/user-attachments/assets/c1f414c2-e642-44e0-a637-301c14c011ae)
+
+### Shortest trades
+
+The shortest trade took 2 minutes.
+```python
+df_dur = df_dur.sort_values('Duration', ascending=True)
+df_dur.head(3)
+```
+![image](https://github.com/user-attachments/assets/0661a15f-414c-4286-b443-5c0bafe3c294)
+
+### Trade duration vs Profit Per Lot
+
+The scatter plot shows that there seems to be a minimal relationship between the duration of a trade and its profitability. This is to be expected - as mentioned earlier the algorithm will hold on to winning trades.
+```python
+plt.figure(figsize=figsize)
+plt.scatter(df['Profit Per Lot'], df['Duration'] / 60, s=3)
+plt.ylabel("Duration (min)")
+plt.xlabel("Profit Per Lot (zł)")
+plt.show()
+```
+![image](https://github.com/user-attachments/assets/7e404716-ece2-4a28-88f1-0ad411378361)
+
+### Average number of Trades Per Day
+```python
+df_open = df[['Open Date', 'Profit']]
+df_open = df_open.groupby(['Open Date'], as_index=False)
+df_open = df_open.count()
+df_open = df_open.rename(columns={'Profit': 'Trades Per Day'})
+```
+The average number of trades per day is:
+```python
+np.round(df_open['Trades Per Day'].mean(), 2)
+```
+4.84
+
+### Trades Per Day histogram
+```pytho
+plt.figure(figsize=figsize)
+plt.hist(df_open['Trades Per Day'])
+plt.ylabel('Frequency')
+plt.xlabel('Trades Per Day')
+plt.show()
+```
+![image](https://github.com/user-attachments/assets/97986ead-5766-4e84-9764-1bfc6973cf55)
+
+### Time spent in trade by market
+
+I calculate the percent of time spent in trades by summing up all trade durations. I then divide that number by number of minutes in the trading period. As can be seen almost half the trading period the algorithms had positions in 'GBPUSD' and 'USDCHF'. The least time was spent trading 'OILWTI'.
+```python
+start = df['Open Date'].min()
+stop = df['Close Date'].max()
+
+total = (stop-start).total_seconds() / 60
+
+df_time = df[['Symbol', 'Duration']].groupby('Symbol', as_index=False).sum() 
+df_time['Percent'] = np.round(df_time['Duration'] / total * 100)
+
+plt.figure(figsize=figsize)
+plt.bar(df_time['Symbol'], df_time['Percent'])
+plt.xticks(df_time['Symbol'], rotation=90)
+plt.ylabel('Time In Trade (%)')
+plt.xlabel('Symbol')
+plt.show()
+```
+![image](https://github.com/user-attachments/assets/f85ac4e3-36e5-46b8-8ef3-fd2c781eea19)
+
+### Orders
+There are 5 ways a order can get closed.
+
+1 By me. (Did not occur)
+2 By the algorithm.
+3 Market moves above/below take profit.
+4 Market moves above/below stop loss.
+5 Broker closes trades open longer than one year. (Did not occur)
+
+So I have 3 situations to examine.
+
+### Percent of stop loss hits
+
+
+
+
+
+
