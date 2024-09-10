@@ -614,9 +614,221 @@ There are 5 ways a order can get closed.
 So I have 3 situations to examine.
 
 ### Percent of stop loss hits
+```python
+np.round(df['Stop Loss Hit'].sum() / df.shape[0] * 100, 2)
+```
+84.78
 
+### Percent of take profit hits
+```python
+np.round(df['Take Profit Hit'].sum() / df.shape[0] * 100, 2)
+```
 
+11.96
 
+### Percent closed by algorithms
 
+Specifically, this is the percent of trades closed because the trade triggered different logic than moving take profit and stop loss orders.
+```python
+np.round(np.sum((df['Take Profit Hit'] == 0) & (df['Stop Loss Hit'] == 0)) / df.shape[0] * 100, 2)
+```
+### Stop order distance
 
+This histogram is very interesting as it shows a way I could potentially improve the logic of my algorithm. Placing orders 10% away from the market for the type of strategy the algorithms trade seems pointless.
+```python
+plt.figure(figsize=figsize)
+plt.hist(df['Stops Distance'])
+plt.ylabel('Frequency')
+plt.xlabel('Distance (%)')
+plt.show()
+```
+![image](https://github.com/user-attachments/assets/997a98f4-e087-4d03-a122-972eddb55ed3)
+
+### Drawdown
+In trading drawdown refers to the difference between the high point in a equity curve and succeding low point. I am interested in the the difference between the high point and the low point as well as the duration of the drawdown.
+
+### Max drawdown
+I define a helper function to locate the points in question.
+
+```python
+def max_drawdown(arr):
+    
+    size = arr.shape[0]
+    arr = np.cumsum(arr)
+    start = np.argmax(arr)
+    stop = np.argmin(arr[start:])
+    
+    return start, arr[start], start + stop, arr[start + stop]
+```
+```python
+d1, v1, d2, v2 = max_drawdown(df['Profit'])
+```
+### Cumulative profit
+
+I draw a plot of the cumulative profit over time and mark the high and low points.
+
+```python
+width = 800
+height = 400
+dpi = 100
+
+plt.figure(figsize=(width/dpi, height/dpi))
+plt.plot(np.cumsum(df['Profit']))
+plt.ylabel("Profit (zł)")
+plt.xlabel("Number of trade")
+plt.scatter(d1, v1, c="green", label="Start of max drawdown")
+plt.scatter(d2, v2, c="red", label="End of max drawdown")
+plt.legend(loc='best')
+plt.title('Maximum drawdown', fontsize=18)
+plt.tight_layout()
+plt.savefig('./img/drawdown.png')
+plt.show()
+```
+![image](https://github.com/user-attachments/assets/39bd7787-d66b-4ee9-8c9f-d98d70f17633)
+
+### Max drawdown duration
+
+I find that the duration of the max drawdown was:
+
+```python
+drawdown_dur = df.loc[d2, "Open Datetime"] - df.loc[d1, "Open Datetime"]
+str(drawdown_dur)
+```
+'4 days 03:48:00'
+
+### Time in max drawdown
+
+Percent of time spent in drawdown:
+
+```python
+np.round(drawdown_dur.total_seconds() / total / 60 * 100, 2)
+```
+14.85
+
+### Max drawdown amount
+
+The difference between the high point in the equity curve and the low point is:
+```python
+v1 - v2
+```
+243.01
+
+## Monte Carlo
+### Simulating trades
+Assumption:
+
+- Future trades will be similar to the ones in the dataset.
+- The algorithms trade size is fixed at 0.01 lots.
+The 'Profit Per Lot' column is sampled with replacement and summed up to simulate possible outcomes for the next 100 trades.
+
+I shall answer the following questions:
+
+1. What is the probability that over the next 100 trades the account will grow ?
+2. How much can I expect to lose in the worst case ?
+3. How much can I expect to gain in the best case ?
+
+Below is a visual to explain the process. Each line represents a different 'future'. I am interested in the distribution of these 'futures'.
+```python
+plt.figure(figsize=figsize)
+np.random.seed(12346)
+
+for _ in range(10):
+    
+    X = np.random.choice(df['Profit Per Lot'], replace=True, size=10)
+    X = np.hstack([np.array([0]), X])
+    plt.plot(np.cumsum(X))
+    plt.xlabel("Trades")
+    plt.ylabel("Total Profit (zł)")
+```
+![image](https://github.com/user-attachments/assets/ab1e6db8-964c-446c-9317-ec7f36fbcc6b)
+
+100000 samples are chosen with replacement and summed up to get the final profit.
+
+```python
+nrows = 10**5 # Number of simulations
+ncols = 10**2 # Number of trades
+
+X = np.random.choice(df['Profit Per Lot'], replace=True, size=(nrows, ncols))
+X = np.cumsum(X, axis=1)
+X = X[:, ncols-1]
+density, bins = np.histogram(X, density=True, bins=200)
+X_unity = density / density.sum()
+```
+### PDF from simulation
+
+I use the data from the simulation to create a pdf.
+
+```python
+width = 800
+height = 400
+dpi = 100
+
+loss_prob = int(100 - np.sum(X > 0) / X.shape[0] * 100)
+mask = bins[1:] <= 0
+
+plt.figure(figsize=(width/dpi, height/dpi))
+plt.plot(bins[1:], X_unity, c='black')
+plt.fill_between(x=bins[1:][mask], y1=0, y2=X_unity[mask], alpha=1/2)
+plt.ylabel('Likelihood')
+plt.xlabel('Profit (zł)')
+plt.text(-250, 0.005, s=f'{loss_prob}%', color='white', fontsize=24)
+plt.ylim(0)
+plt.xlim(np.min(bins[1:]), np.max(bins[1:]))
+plt.title('Probability of loss over the next 100 days.', fontsize=18)
+plt.tight_layout()
+plt.savefig('./img/probability_of_loss.png')
+plt.show()
+```
+
+![image](https://github.com/user-attachments/assets/03a3bbaf-ce2f-491b-9cd5-e9d2f97341cf)
+
+### CDF from simulation
+
+I use the data from the simulation to create a cdf.
+
+```python
+plt.figure(figsize=figsize)
+plt.plot(bins[1:], np.cumsum(X_unity))
+plt.ylabel(r"$P(X \leq x)$")
+plt.xlabel("Profit (zł)")
+plt.show()
+```
+![image](https://github.com/user-attachments/assets/c81dfb02-43ec-4eae-93a3-c437d9885452)
+
+### Probability of profit
+
+From the simulated data I can calculate the probability of making money over the next 100 trades:
+```python
+np.round(np.sum(X > 0) / X.shape[0] * 100, 2)
+```
+56.63
+
+### Best case scenario
+
+In the best case scenario I can expect to make:
+```python
+alpha = 0.05
+np.round(np.quantile(X, 1-alpha), 2)
+```
+443.62
+
+The maximum profit in the simulation was:
+```python
+np.round(np.max(X), 2)
+```
+1305.32
+
+### Worst case scenario
+
+In the worst case scenario I can expect to lose:
+```python
+np.round(np.quantile(X, alpha), 2)
+```
+-306.93
+
+The minimum profit in the simulation was:
+```python
+np.round(np.min(X))
+```
+-773.0
 
