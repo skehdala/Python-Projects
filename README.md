@@ -605,11 +605,11 @@ plt.show()
 ### Orders
 There are 5 ways a order can get closed.
 
-1 By me. (Did not occur)
-2 By the algorithm.
-3 Market moves above/below take profit.
-4 Market moves above/below stop loss.
-5 Broker closes trades open longer than one year. (Did not occur)
+1. By me. (Did not occur)
+2. By the algorithm.
+3. Market moves above/below take profit.
+4. Market moves above/below stop loss.
+5. Broker closes trades open longer than one year. (Did not occur)
 
 So I have 3 situations to examine.
 
