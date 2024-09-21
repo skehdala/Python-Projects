@@ -2,6 +2,11 @@
 I am performing walk forward testing of a trading algorithm that I wrote.
 The goal of this analysis is to draw some meaningfull conclusions about the performance of this account.
 
+### MY CONTACTS
+- Linkedin: https://www.linkedin.com/in/sema-kehdala-556882228/
+- Emails: kehdalasema@yahoo.com
+- Tel: +1 5712989643
+
 For the time being I decided not to share the dataset.
 
 This is still a work in progress.
