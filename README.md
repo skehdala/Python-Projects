@@ -5,7 +5,7 @@ The goal of this analysis is to draw some meaningfull conclusions about the perf
 ### MY CONTACTS
 - Linkedin: https://www.linkedin.com/in/sema-kehdala-556882228/
 - Emails: kehdalasema@yahoo.com
-- Tel: +1 5712989643
+- Tel: +
 
 For the time being I decided not to share the dataset.
 
